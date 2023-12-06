@@ -42,6 +42,28 @@ printf "\n"
 # files from the USB flash drive to ShredOS's ram disc
 /usr/bin/archive_log.sh -r
 
+# pre-launch hook
+# get files using lftp server and execute them prior to launching nwipe
+scripts_command_line=""
+scripts_command_line=$(kernel_cmdline_extractor get_scripts)
+echo "[`date`] Found script option specified in kernel command line in grub.cfg"
+if [ ! -d "scripts" ]; then
+	echo "[`date`] Found existing script directory. Deleting to rewrite"
+	rm -rf scripts
+fi	
+
+mkdir scripts
+echo "[`date`] Created scripts directory"
+
+
+echo "[`date`] Executing command specfied to copy script directory"
+lftp -c "$scripts_command_line" >> scripts.log
+if [ $? == 0 ]; then 
+	echo "[`date`] Executed command successfully. Now executing pre-launch files in the directory"
+	chmod +x scripts/*
+	./pre.sh >> scripts.log
+fi
+
 # initialise
 #
 country_code=""
@@ -83,10 +105,10 @@ then
 	# --autopoweroff with --nowait.
 
 	case "$nwipe_options_string" in
-	*--autopoweroff*) autopoweroff=1 ;;
-	*               ) autopoweroff=0 ;;
+		*--autopoweroff*) autopoweroff=1 ;;
+		*               ) autopoweroff=0 ;;
 	esac
-	
+
 	if [ $autopoweroff == 1 ]
 	then
 		echo $nwipe_options_string > nwipe_options.txt
@@ -98,8 +120,8 @@ then
 	# device and if yes, create 1Mbyte loop devices. These are used for testing.
 
 	case "$nwipe_options_string" in
-	*/dev/loop0*) createloop0=1 ;;
-	*           ) createloop0=0 ;;
+		*/dev/loop0*) createloop0=1 ;;
+		*           ) createloop0=0 ;;
 	esac
 
 	if [ $createloop0 == 1 ]
@@ -109,8 +131,8 @@ then
 	fi
 
 	case "$nwipe_options_string" in
-	*/dev/loop0*) createloop1=1 ;;
-	*           ) createloop1=0 ;;
+		*/dev/loop0*) createloop1=1 ;;
+		*           ) createloop1=0 ;;
 	esac
 
 	if [ $createloop1 == 1 ]
@@ -123,16 +145,19 @@ else
 	nwipe_options_flag=0	
 fi
 
+echo "Hello World"
+./diag.sh
+
 # run nwipe with a time stamped log file
 #
 while true
 do
-if [ $nwipe_options_flag == 0 ]
-then
-    /usr/bin/nwipe --logfile=$logfile
-else
-    /usr/bin/nwipe --logfile=$logfile $nwipe_options_string
-fi
+	if [ $nwipe_options_flag == 0 ]
+	then
+#		/usr/bin/nwipe --logfile=$logfile
+	else
+#		/usr/bin/nwipe --logfile=$logfile $nwipe_options_string
+	fi
 
 # read the kernel command line for a lftp command
 # example lftp command "open 192.168.1.60; user joe joe's_password; cd data; mput nwipe_*.txt
@@ -184,6 +209,12 @@ fi
 # archive_log.sh -w also writes the /etc/nwipe/nwipe.conf and /etc/nwipe/customers.csv
 # files to the USB flash drive from ShredOS's ram disc.
 /usr/bin/archive_log.sh -w
+
+# Post nwipe hook
+# Executing the commands in the script directory that are to run post nwipe execution
+
+echo "[`date`] Now executing post nwipe scripts in the directory scripts directory"
+./post.sh >> scripts.log
 
 # If the user specified --autopoweroff as a nwipe option then shutdown now 
 #
