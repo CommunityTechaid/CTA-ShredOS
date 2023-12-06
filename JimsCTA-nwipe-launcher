@@ -1,0 +1,217 @@
+#!/bin/bash
+
+# eject DVD drive(s) à la Blancco
+
+eject /dev/sr* 2>&1 > /dev/null
+
+# Trap the ctrl+c signal
+trap "echo" INT
+
+# Turn off flow control to avoid user confusion
+stty -ixon
+
+# initialise
+country_code=""
+nwipe_options_string=""
+lftp_command_line=""
+
+echo "[`date`] lftp log" > lftp.log
+
+# read the kernel command line for the loadkeys label for setting the correct keyboard layout
+country_code=$(kernel_cmdline_extractor loadkeys)
+if [ $? == 0 ]
+then
+	if [ "$country_code" != "" ]
+	then
+		loadkeys $country_code
+	fi
+fi
+
+# read the kernel command line for nwipe options
+nwipe_options_string=$(kernel_cmdline_extractor nwipe_options)
+if [ $? == 0 ]
+then
+	nwipe_options_flag=1
+else
+	nwipe_options_flag=0
+fi
+
+
+exec 3>&1
+
+dlg_backtitle="Community TechAid drive eraser (feat. ShredOS and nwipe)"
+
+dlg () {
+    dialog --no-cancel --colors --backtitle "${dlg_backtitle}" "$@"  2>&1 1>&3
+}
+
+get_device_id () {
+    DEV_ID=$(dlg --title 'Device ID' --inputbox  "Enter the device ID from the CTA sticker.\n\nIf it doesn't have one, enter 0000"  10 30)
+}
+
+
+check_id () {
+    if [[ ! $DEV_ID =~ ^[0-9]+$ ]]; then
+        dlg --title 'ID check'\
+            --msgbox "You have entered \Zb\Z1${DEV_ID}\Zn, which is not a proper ID number.\n\nTry again" 10 30
+        return 1
+    fi
+}
+
+
+confirm_id () {
+    dlg --title 'Confirmation'\
+        --yesno "You have entered \Zb\Z1${DEV_ID}\Zn\n\nIs this the correct device ID?" 10 30
+}
+
+until get_device_id && check_id && confirm_id; do :; done
+
+
+#exec 3>&-
+
+# run nwipe with a time stamped log file
+
+logfile=nwipe_log_${DEV_ID}_$(date +%Y%m%d-%H%M%S).txt
+
+if [ $nwipe_options_flag == 0 ]
+then
+    /usr/bin/nwipe --logfile=${logfile}
+else
+    /usr/bin/nwipe --logfile=${logfile}  $nwipe_options_string
+fi
+
+nwipe_exit_code=$?
+
+# read the kernel command line for a lftp command
+# example lftp command "open 192.168.1.60; user joe joe's_password; cd data; mput nwipe_*.txt
+lftp_command_line=$(kernel_cmdline_extractor lftp)
+if [ $? == 0 ]
+then
+	echo "[`date`] Found lftp commands on kernel command line in grub.cfg"
+	if [ ! -d "exported" ]; then
+		mkdir exported
+		echo "[`date`] created exported directory"
+	fi
+	echo "[`date`] Executing users lftp commands"
+	lftp -c "$lftp_command_line" >> lftp.log
+	lftp_exit_code=$?
+	if [ $lftp_exit_code == 0 ]
+	then
+		echo "[`date`] lftp completed sucessfully"
+		echo "[`date`] moving nwipe logs to ../exported"
+		mv nwipe_*.txt exported/
+
+	else
+		echo "[`date`] lftp command failed, See above and lftp.log for details"
+	fi
+fi
+
+## Finishing up
+
+## TODO: check for successful logging (+ what to do if logging fails)
+
+## Nag messages to make sure operators do the right thing at the end of the wipe
+success_nag_db () {
+    ## yes and no round the wrong way so we can have No as default    
+    dlg --cr-wrap --no-collapse \
+        --no-label "Yes, I have" --yes-label "No; I'll do it right away"  \
+        --title 'Drive wiped: update the database!' --yesno "
+\Zr#########################################################
+#    ____       _            __        ___              #
+#   |  _ \ _ __(_)_   _____  \ \      / (_)_ __   ___   #
+#   | | | | '__| \ \ / / _ \  \ \ /\ / /| | '_ \ / _ \\  #
+#   | |_| | |  | |\ V /  __/   \ V  V / | | |_) |  __/  #
+#   |____/|_|  |_| \_/ \___|    \_/\_/  |_| .__/ \___|  #
+#                                         |_|           #
+#                              _      _       _         #
+#     ___ ___  _ __ ___  _ __ | | ___| |_ ___| |        #
+#    / __/ _ \| '_ \` _ \| '_ \| |/ _ \ __/ _ \ |        #
+#   | (_| (_) | | | | | | |_) | |  __/ ||  __/_|        #
+#    \___\___/|_| |_| |_| .__/|_|\___|\__\___(_)        #
+#                                                       #
+#########################################################
+
+\ZnThe drive for $DEV_ID has been successfully wiped.
+
+      Have you put a red sticker on it and 
+      updated the database?" 25 61
+    ## We've already caused confusion by swapping yes and no, so put things right here:
+    return $(( 1 - $? ))
+}
+
+fail_nag_db () {
+    ## yes and no round the wrong way so we can have No as default    
+    dlg --cr-wrap --no-collapse \
+        --no-label "Yes, I have" --yes-label "No; I'll do it right away"  \
+        --title 'Drive wiped failed: update the database!' --yesno "
+\Zr#########################################################
+#    ____       _            __        ___              #
+#   |  _ \ _ __(_)_   _____  \ \      / (_)_ __   ___   #
+#   | | | | '__| \ \ / / _ \  \ \ /\ / /| | '_ \ / _ \\  #
+#   | |_| | |  | |\ V /  __/   \ V  V / | | |_) |  __/  #
+#   |____/|_|  |_| \_/ \___|    \_/\_/  |_| .__/ \___|  #
+#                                         |_|           #
+#                                                       #
+#               __       _ _          _                 #
+#              / _| __ _(_) | ___  __| |                #
+#             | |_ / _\` | | |/ _ \/ _\` |                #
+#             |  _| (_| | | |  __/ (_| |                #
+#             |_|  \__,_|_|_|\___|\__,_|                #
+#                                                       #
+#########################################################
+
+\Zn  The drive wipe for $DEV_ID has failed.
+                
+       Have you updated the database?" 25 61
+    ## We've already caused confusion by swapping yes and no, so put things right here:
+    return $(( 1 - $? ))
+}    
+
+
+nag_poweroff () {
+    if [[ $nwipe_exit_code == 0 ]]; then
+        shelving_instruction="The wipe was \Z2successful\Zn, so put it on the shelf labelled 'wiped'."
+    else
+        shelving_instruction="The wipe \Z1failed\Zn, so put it on the shelf labelled 'network wipe problems'."
+    fi
+
+    dlg --cr-wrap --no-collapse --title 'Shut down and shelve!' \
+        --infobox "
+
+
+
+\Zn         \Zr######################################################
+\Zn         \Zr#     ____  _          _                ___ _        #
+\Zn         \Zr#    / ___|| |__   ___| |_   _____     |_ _| |_      #
+\Zn         \Zr#    \___ \| '_ \ / _ \ \ \ / / _ \     | || __|     #
+\Zn         \Zr#     ___) | | | |  __/ |\ V /  __/     | || |_      #
+\Zn         \Zr#    |____/|_| |_|\___|_| \_/ \___|    |___|\__|     #
+\Zn         \Zr#                                                    #
+\Zn         \Zr######################################################
+
+
+
+\Zn  You can now safely switch off the machine.
+
+  When it's turned off, put it on the correct shelf:
+
+  $shelving_instruction
+
+" 26 80
+}
+
+
+
+# testing (comment out for production):
+# nwipe_exit_code=1
+# DEV_ID=3990
+
+if [[ $nwipe_exit_code == 0 ]];
+then
+    until success_nag_db; do :; done
+else
+    until fail_nag_db; do :; done
+fi
+nag_poweroff
+
+while true; do sleep 600; done
