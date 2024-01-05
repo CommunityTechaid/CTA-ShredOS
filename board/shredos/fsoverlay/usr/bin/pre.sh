@@ -1,6 +1,6 @@
 #!/bin/sh
 
-for f in pre_*.sh; do
+for f in scripts/pre_*.sh; do
 	    # if this execution fails, then stop the `for`:
 	echo "Executing $f"
 	if ! bash "$f"; then

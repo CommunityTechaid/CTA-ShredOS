@@ -1,6 +1,6 @@
 #!/bin/sh
 
-for f in post_*.sh; do
+for f in scripts/post_*.sh; do
 	    # if this execution fails, then stop the `for`:
 	echo "Executing $f"
 	if ! bash "$f"; then

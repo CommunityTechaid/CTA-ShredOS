@@ -1,4 +1,3 @@
-#! /usr/bin/zsh
 ###
 #
 # Script to gather HW info from devices
@@ -19,20 +18,20 @@
 ###
 # required tools: jq, lshw, acpitool, smartmontools
 
-system_info=$(sudo lshw -json)
+system_info=$(lshw -json)
 
 system_manufacturer=$(jq '.vendor' <<< "$system_info")
 system_serial_number=$(jq '.serial' <<< "$system_info")
 system_model=$(jq '.product' <<< "$system_info")
 system_version=$(jq '.version' <<< "$system_info")
 
-cpu_info=$(sudo lshw -json -class cpu)
+cpu_info=$(lshw -json -class cpu)
 
 cpu_type=$(jq '.[].product' <<< "$cpu_info")
 cpu_bits=$(jq '.[].width' <<< "$cpu_info")
 cpu_cores=$(jq '.[].configuration.cores' <<< "$cpu_info")
 
-tpm_version=$(sudo cat /sys/class/tpm/tpm0/tpm_version_major)
+tpm_version=$(cat /sys/class/tpm/tpm0/tpm_version_major)
 
 ram_installed=$(jq '.children[] | select(.id == "core").children[] | select(.id == "memory").size ' <<< "$system_info" | numfmt --to=iec)
 
@@ -101,11 +100,11 @@ printf "\n\n# DISK HEALTH REPORTS #\n\n"
 for name in ${disk_names[@]};
 do
         #this command works in shell but cannot find device type when run through the script.
-        disk_health=$(sudo smartctl -s on -a "$name")
+        disk_health=$(smartctl -s on -a "$name")
         printf "$disk_health"
 done
 
 printf "\n\n# BATTERY HEALTH #\n\n"
-battery_health=$(sudo acpitool -B)
+battery_health=$(acpitool -B)
 printf "%s" $battery_health
 printf "\n\n"
