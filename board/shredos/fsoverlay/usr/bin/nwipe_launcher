@@ -44,7 +44,7 @@ printf "\n"
 
 #creating output directory in /usr
 echo "[`date`] Creating output directory for device_logs"
-if [ ! -d "/usr/output" ]; then
+if [ -d "/usr/output" ]; then
 		echo "[`date`] Found existing output directory. Deleting to rewrite"
 		rm -rf /usr/output
 	fi
@@ -62,7 +62,7 @@ scripts_command_line=$(kernel_cmdline_extractor get_scripts)
 if [ $? == 0 ]; then
 	script_present_flag=1
 	echo "[`date`] Found script option specified in kernel command line in grub.cfg"
-	if [ ! -d "/usr/bin/scripts" ]; then
+	if [ -d "/usr/bin/scripts" ]; then
 		echo "[`date`] Found existing script directory. Deleting to rewrite"
 		rm -rf /usr/bin/scripts
 	fi
