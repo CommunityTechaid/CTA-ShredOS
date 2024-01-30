@@ -50,12 +50,12 @@ scripts_command_line=$(kernel_cmdline_extractor get_scripts)
 if [ $? == 0 ]; then
 	script_present_flag=1
 	echo "[`date`] Found script option specified in kernel command line in grub.cfg"
-	if [ ! -d "scripts" ]; then
+	if [ ! -d "/usr/bin/scripts" ]; then
 		echo "[`date`] Found existing script directory. Deleting to rewrite"
-		rm -rf scripts
+		rm -rf /usr/bin/scripts
 	fi
 
-	mkdir scripts
+	mkdir /usr/bin/scripts
 	echo "[`date`] Created scripts directory"
 
 
@@ -63,7 +63,7 @@ if [ $? == 0 ]; then
 	lftp -c "$scripts_command_line" >> scripts.log
 	if [ $? == 0 ]; then
 		echo "[`date`] Executed command successfully. Now executing pre-launch files in the directory"
-		chmod +x scripts/*
+		chmod +x /usr/bin/scripts/*
 		./usr/bin/pre.sh >> scripts.log
 	fi
 fi
