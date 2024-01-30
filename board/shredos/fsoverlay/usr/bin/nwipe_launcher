@@ -161,10 +161,6 @@ else
 	nwipe_options_flag=0	
 fi
 
-#temporary stuff. Delete after test
-echo "Hello World"
-./usr/bin/diag.sh
-
 # run nwipe with a time stamped log file
 #
 while true
