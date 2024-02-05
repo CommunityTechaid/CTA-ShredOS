@@ -1,14 +1,20 @@
 # Documentation
 
 ## Quick Links
-[How to use](#how-to-use)  
+[How to use](#how-to-use)
+[Build Instructions](https://github.com/PartialVolume/shredos.x86_64?tab=readme-ov-file#compiling-shredos-and-burning-to-usb-stick-the-harder-way-)  
 [Changes in the custom build](#changes-in-the-custom-build)  
 [Official Documentation](https://github.com/PartialVolume/shredos.x86_64)  
-[Build Instructions](https://github.com/PartialVolume/shredos.x86_64?tab=readme-ov-file#compiling-shredos-and-burning-to-usb-stick-the-harder-way-)  
+
 
 ## How to use
-These instructions are in addition to the official ShredOS repo  [GitHub - PartialVolume/shredos.x86_64](https://github.com/PartialVolume/shredos.x86_64)
-- Create a directory to store custom scripts on the local server.  
+These instructions are in addition to the official [ShredOS repo](https://github.com/PartialVolume/shredos.x86_64)
+- Build the image as per the upstream documentation.
+- Mount image so it's available for the PXE boot setup.
+- Create a directory to store the [CTA Hardward Info](https://github.com/CommunityTechaid/HardwardInfo) scripts on the server.
+	(eg `mkdir /srv/netboot/shredos/HardwardInfoScripts`)
+- Copy / clone scripts into the folder
+	(`git clone https://github.com/CommunityTechaid/HardwardInfo /srv/netboot/shredos/HardwardInfoScripts`)
 - add an lftp command that copies all the files from the scripts folder on the server to the `/usr/bin/scripts` directory of ShredOS fs. This should be configured as the the `get_scripts` parameter in grubs.cfg.  (Example lftp command `open 192.168.1.60; user joe joe's_password; cd data; mput nwipe_*.tx`).
 - The custom scripts directory on the server should hold all the scripts that need to be executed before or after nwipe. The scripts should be named as follows. 
 	- `pre_00X[scriptname].sh` for all scripts that need to be run *before* nwipe is launched. `00X` is a number used to denote precedence.  Lower numbered scripts are executed first. 
