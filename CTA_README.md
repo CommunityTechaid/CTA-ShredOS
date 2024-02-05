@@ -15,7 +15,12 @@ These instructions are in addition to the official [ShredOS repo](https://github
 	(eg `mkdir /srv/netboot/shredos/HardwardInfoScripts`)
 - Copy / clone scripts into the folder
 	(`git clone https://github.com/CommunityTechaid/HardwardInfo /srv/netboot/shredos/HardwardInfoScripts`)
-- add an lftp command that copies all the files from the scripts folder on the server to the `/usr/bin/scripts` directory of ShredOS fs. This should be configured as the the `get_scripts` parameter in grubs.cfg.  (Example lftp command `open 192.168.1.60; user joe joe's_password; cd data; mput nwipe_*.tx`).
+- Add kernal parameters to the `menu.ipxe` file (Or `/boot/grub/grub.cfg` if not using the PXE setup)
+	- Get the scripts
+		- `get_scripts="open 10.0.0.1; user ServerUser Password; cd path/To/HardwardInfo/Scripts; !!! Then copy files to /ust/bin/scripts !!!`
+	- Device logs param
+   		- `tbd`
+
 - The custom scripts directory on the server should hold all the scripts that need to be executed before or after nwipe. The scripts should be named as follows. 
 	- `pre_00X[scriptname].sh` for all scripts that need to be run *before* nwipe is launched. `00X` is a number used to denote precedence.  Lower numbered scripts are executed first. 
 	- `post_00X[scriptname].sh` for all scripts that need to be run *after* nwipe is launched.
