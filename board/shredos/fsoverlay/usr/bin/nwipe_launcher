@@ -42,6 +42,18 @@ printf "\n"
 # files from the USB flash drive to ShredOS's ram disc
 /usr/bin/archive_log.sh -r
 
+#creating output directory in /usr
+echo "[`date`] Creating output directory for device_logs"
+if [ -d "/usr/output" ]; then
+		echo "[`date`] Found existing output directory. Deleting to rewrite"
+		rm -rf /usr/output
+	fi
+
+	mkdir /usr/output
+	echo "[`date`] Created /usr/output directory"
+
+
+
 # pre-launch hook
 # get files using lftp server and execute them prior to launching nwipe
 scripts_present_flag=0
@@ -50,12 +62,12 @@ scripts_command_line=$(kernel_cmdline_extractor get_scripts)
 if [ $? == 0 ]; then
 	script_present_flag=1
 	echo "[`date`] Found script option specified in kernel command line in grub.cfg"
-	if [ ! -d "scripts" ]; then
+	if [ -d "/usr/bin/scripts" ]; then
 		echo "[`date`] Found existing script directory. Deleting to rewrite"
-		rm -rf scripts
+		rm -rf /usr/bin/scripts
 	fi
 
-	mkdir scripts
+	mkdir /usr/bin/scripts
 	echo "[`date`] Created scripts directory"
 
 
@@ -63,7 +75,7 @@ if [ $? == 0 ]; then
 	lftp -c "$scripts_command_line" >> scripts.log
 	if [ $? == 0 ]; then
 		echo "[`date`] Executed command successfully. Now executing pre-launch files in the directory"
-		chmod +x scripts/*
+		chmod +x /usr/bin/scripts/*
 		./usr/bin/pre.sh >> scripts.log
 	fi
 fi
@@ -149,20 +161,23 @@ else
 	nwipe_options_flag=0	
 fi
 
-#temporary stuff. Delete after test
-echo "Hello World"
-./usr/bin/diag.sh
-
 # run nwipe with a time stamped log file
 #
-#while true
-#do
-#	if [ $nwipe_options_flag == 0 ]
-#	then
-##		/usr/bin/nwipe --logfile=$logfile
-#	else
-##		/usr/bin/nwipe --logfile=$logfile $nwipe_options_string
-#	fi
+while true
+do
+	echo 'Press Y to continue to execute nwipe: [Y/N]'
+	read proceed
+	
+	if [ "$proceed" != "Y" ]; then
+		break;
+	fi
+
+	if [ $nwipe_options_flag == 0 ]
+	then
+		/usr/bin/nwipe --logfile=$logfile
+	else
+		/usr/bin/nwipe --logfile=$logfile $nwipe_options_string
+	fi
 
 # read the kernel command line for a lftp command
 # example lftp command "open 192.168.1.60; user joe joe's_password; cd data; mput nwipe_*.txt
