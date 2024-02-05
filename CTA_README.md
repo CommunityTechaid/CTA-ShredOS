@@ -15,16 +15,17 @@ These instructions are in addition to the official [ShredOS repo](https://github
 	(eg `mkdir /srv/netboot/shredos/HardwardInfoScripts`)
 - Copy / clone scripts into the folder
 	(`git clone https://github.com/CommunityTechaid/HardwardInfo /srv/netboot/shredos/HardwardInfoScripts`)
-- Add kernal parameters to the `menu.ipxe` file (Or `/boot/grub/grub.cfg` if not using the PXE setup)
+- Add kernal parameters to the `menu.ipxe` file (Or `/boot/grub/grub.cfg` and `/EFI/grub/grub.cfg` if not using the PXE setup)
 	- Get the scripts
-		- `get_scripts="open 10.0.0.1; user ServerUser Password; cd path/To/HardwardInfo/Scripts; !!! Then copy files to /ust/bin/scripts !!!`
-	- Device logs param
-   		- `tbd`
+		- `get_scripts="open 10.0.0.1; user ServerUser Password; cd path/To/HardwardInfo/Scripts; mget -O /usr/bin/scripts ./*sh; exit`
+  		- The custom scripts directory on the server should hold all the scripts that need to be executed before or after nwipe. The scripts should be named as follows. 
+			- `pre_00X[scriptname].sh` for all scripts that need to be run *before* nwipe is launched. `00X` is a number used to denote precedence.  Lower numbered scripts are executed first. 
+			- `post_00X[scriptname].sh` for all scripts that need to be run *after* nwipe is launched.- 
+	- Nwipe_logs param (old setup using the .txt logs)
+   		- `lftp="open 10.0.0.1; user ServerUser Password; cd shredos; mput nwipe_*.txt; exit`
+     	- JSON device logs
+      		- `lftp="open 10.0.0.1; user ServerUser Password; cd shredos; mput device*.json; exit`
 
-- The custom scripts directory on the server should hold all the scripts that need to be executed before or after nwipe. The scripts should be named as follows. 
-	- `pre_00X[scriptname].sh` for all scripts that need to be run *before* nwipe is launched. `00X` is a number used to denote precedence.  Lower numbered scripts are executed first. 
-	- `post_00X[scriptname].sh` for all scripts that need to be run *after* nwipe is launched.
-- Additionally, create a folder named `device_logs`  on the server. Configure an lftp command to fetch `device_\*.json` from `/usr/output` on the ShredOS fs to the `device_logs` folder. This should be configured in the `lftp` parameter of grub.cfg (along with the command to transfer nwipe_logs. Refer official documentation).  
 - Note: Make sure the custom scripts are tested. If one script fails. the execution of the remaining scripts are abandoned. Some logs will be available in scripts.log but on the filesystem. 
 
 ## Changes in the custom build
