@@ -43,40 +43,39 @@ printf "\n"
 /usr/bin/archive_log.sh -r
 
 #creating output directory in /usr
-echo "[`date`] Creating output directory for device_logs"
+echo "[$(date)] Creating output directory for device_logs"
 if [ -d "/usr/output" ]; then
-		echo "[`date`] Found existing output directory. Deleting to rewrite"
+		echo "[$(date)] Found existing output directory. Deleting to rewrite"
 		rm -rf /usr/output
 	fi
 
 	mkdir /usr/output
-	echo "[`date`] Created /usr/output directory"
+	echo "[$(date)] Created /usr/output directory"
 
 
 
 # pre-launch hook
 # get files using lftp server and execute them prior to launching nwipe
 scripts_present_flag=0
-scripts_command_line=""
-scripts_command_line=$(kernel_cmdline_extractor get_scripts)
+scripts_command_line="$(kernel_cmdline_extractor get_scripts)"
 if [ $? == 0 ]; then
-	script_present_flag=1
-	echo "[`date`] Found script option specified in kernel command line in grub.cfg"
+	scripts_present_flag=1
+	echo "[$(date)] Found script option specified in kernel command line in grub.cfg"
 	if [ -d "/usr/bin/scripts" ]; then
-		echo "[`date`] Found existing script directory. Deleting to rewrite"
+		echo "[$(date)] Found existing script directory. Deleting to rewrite"
 		rm -rf /usr/bin/scripts
 	fi
 
 	mkdir /usr/bin/scripts
-	echo "[`date`] Created scripts directory"
+	echo "[$(date)] Created scripts directory"
 
 
-	echo "[`date`] Executing command specfied to copy script directory"
+	echo "[$(date)] Executing command specfied to copy script directory"
 	lftp -c "$scripts_command_line" >> scripts.log
 	if [ $? == 0 ]; then
-		echo "[`date`] Executed command successfully. Now executing pre-launch files in the directory"
+		echo "[$(date)] Executed command successfully. Now executing pre-launch files in the directory"
 		chmod +x /usr/bin/scripts/*
-		./usr/bin/pre.sh >> scripts.log
+		/usr/bin/pre.sh | tee -a scripts.log 
 	fi
 fi
 
@@ -89,8 +88,8 @@ http_post_url=""
 autopoweroff=0
 logfile="nwipe_log_$(date +%Y%m%d-%H%M%S).txt"
 
-echo "[`date`] lftp log" > lftp.log
-echo "[`date`] wget log" > wget.log
+echo "[$(date)] lftp log" > lftp.log
+echo "[$(date)] wget log" > wget.log
 
 # read the kernel command line for the loadkeys label for setting the correct keyboard layout
 #
@@ -129,7 +128,7 @@ then
 	then
 		echo $nwipe_options_string > nwipe_options.txt
 		sed -i 's/--autopoweroff/--nowait/g' nwipe_options.txt
-		nwipe_options_string=`cat nwipe_options.txt`
+		nwipe_options_string=$(<nwipe_options.txt)
 	fi
 
 	# In addition, check whether user has specified a /dev/loop0 or /dev/loop1
@@ -185,40 +184,40 @@ do
 lftp_command_line=$(kernel_cmdline_extractor lftp)
 if [ $? == 0 ]
 then
-	echo "[`date`] Found lftp commands on kernel command line in grub.cfg"
+	echo "[$(date)] Found lftp commands on kernel command line in grub.cfg"
 	if [ ! -d "exported" ]; then
 		mkdir exported
-		echo "[`date`] created exported directory"
+		echo "[$(date)] created exported directory"
 	fi
-	echo "[`date`] Executing users lftp commands"
+	echo "[$(date)] Executing users lftp commands"
 	lftp -c "$lftp_command_line" >> lftp.log
 	if [ $? == 0 ]
 	then
-		echo "[`date`] lftp completed sucessfully"
-		echo "[`date`] moving nwipe logs to ../exported"
+		echo "[$(date)] lftp completed sucessfully"
+		echo "[$(date)] moving nwipe logs to ../exported"
 		mv $logfile exported/
 	else
-		echo "[`date`] lftp command failed, See above and lftp.log for details"
+		echo "[$(date)] lftp command failed, See above and lftp.log for details"
 	fi
 fi
 
 http_post_url=$(kernel_cmdline_extractor http_post_url)
 if [ $? == 0 ]
 then
-	echo "[`date`] Found http_post config on kernel command line in grub.cfg"
+	echo "[$(date)] Found http_post config on kernel command line in grub.cfg"
 	if [ ! -d "exported" ]; then
 		mkdir exported
-		echo "[`date`] created exported directory"
+		echo "[$(date)] created exported directory"
 	fi
-	echo "[`date`] Executing users http_post request"
+	echo "[$(date)] Executing users http_post request"
 	wget --method PUT --body-file="$logfile" "$http_post_url" -O - -nv >> wget.log
 	if [ $? == 0 ]
 	then
-		echo "[`date`] wget completed sucessfully"
-		echo "[`date`] moving nwipe logs to ../exported"
+		echo "[$(date)] wget completed sucessfully"
+		echo "[$(date)] moving nwipe logs to ../exported"
 		mv $logfile exported/
 	else
-		echo "[`date`] wget command failed, See above and wget.log for details"
+		echo "[$(date)] wget command failed, See above and wget.log for details"
 	fi
 fi
 
@@ -232,9 +231,9 @@ fi
 
 # Post nwipe hook
 # Executing the commands in the script directory that are to run post nwipe execution
-if [ $script_present_flag == 1 ]; then
-	echo "[`date`] Now executing post nwipe scripts in the directory scripts directory"
-	./usr/bin/post.sh >> scripts.log
+if [ $scripts_present_flag == 1 ]; then
+	echo "[$(date)] Now executing post nwipe scripts in the directory scripts directory"
+	/usr/bin/post.sh | tee -a scripts.log
 fi
 
 # If the user specified --autopoweroff as a nwipe option then shutdown now 
