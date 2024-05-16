@@ -230,6 +230,17 @@ if [ $scripts_present_flag == 1 ]; then
 	/usr/bin/post.sh | tee -a scripts.log
 fi
 
+#Finishing up - This part is copied from the previous version of nwipe launcher
+#The post script should ideally not return as it will display whatever necessary instruction or output. In case it returns,
+#we indicate the end of the process and display a msgbox as below. 
+nag_poweroff () {
+    dlg --cr-wrap --no-collapse --title 'End of wipe process' \
+        --infobox "
+\Zn  You can now safely switch off the machine.
+  When it's turned off, put it on the correct shelf
+" 26 80
+}
+
 # If the user specified --autopoweroff as a nwipe option then shutdown now 
 #
 if [ $autopoweroff == 1 ]
@@ -237,16 +248,9 @@ then
 	init 0
 fi
 
-printf ""
-printf "Paused, press a key to restart nwipe."
-read -rsn1 input
-sleep 1;
-printf " 4"
-sleep 1
-printf " 3"
-sleep 1;
-printf " 2"
-sleep 1
-printf " 1"
-done
+
+nag_poweroff
+
+#Random infinite loop
+while true; do sleep 600; done
 
