@@ -164,10 +164,7 @@ fi
 #
 while true
 do
-	echo 'Press Y to continue to execute nwipe: [Y/N]'
-	read proceed
 	
-	if [ "$proceed" == "Y" ]; then
 
 		if [ $nwipe_options_flag == 0 ]
 		then
@@ -175,7 +172,6 @@ do
 		else
 			/usr/bin/nwipe --logfile=$logfile $nwipe_options_string
 		fi
-	fi
 # read the kernel command line for a lftp command
 # example lftp command "open 192.168.1.60; user joe joe's_password; cd data; mput nwipe_*.txt
 #
