@@ -45,12 +45,12 @@ printf "\n"
 #creating output directory in /usr
 echo "[$(date)] Creating output directory for device_logs"
 if [ -d "/usr/output" ]; then
-		echo "[$(date)] Found existing output directory. Deleting to rewrite"
-		rm -rf /usr/output
-	fi
+	echo "[$(date)] Found existing output directory. Deleting to rewrite"
+	rm -rf /usr/output
+fi
 
-	mkdir /usr/output
-	echo "[$(date)] Created /usr/output directory"
+mkdir /usr/output
+echo "[$(date)] Created /usr/output directory"
 
 
 
@@ -164,56 +164,56 @@ fi
 #
 while true
 do
-	
 
-		if [ $nwipe_options_flag == 0 ]
-		then
-			/usr/bin/nwipe --logfile=$logfile
-		else
-			/usr/bin/nwipe --logfile=$logfile $nwipe_options_string
+
+	if [ $nwipe_options_flag == 0 ]
+	then
+		/usr/bin/nwipe --logfile=$logfile
+	else
+		/usr/bin/nwipe --logfile=$logfile $nwipe_options_string
+	fi
+	# read the kernel command line for a lftp command
+	# example lftp command "open 192.168.1.60; user joe joe's_password; cd data; mput nwipe_*.txt
+	#
+	lftp_command_line=$(kernel_cmdline_extractor lftp)
+	if [ $? == 0 ]
+	then
+		echo "[$(date)] Found lftp commands on kernel command line in grub.cfg"
+		if [ ! -d "exported" ]; then
+			mkdir exported
+			echo "[$(date)] created exported directory"
 		fi
-# read the kernel command line for a lftp command
-# example lftp command "open 192.168.1.60; user joe joe's_password; cd data; mput nwipe_*.txt
-#
-lftp_command_line=$(kernel_cmdline_extractor lftp)
-if [ $? == 0 ]
-then
-	echo "[$(date)] Found lftp commands on kernel command line in grub.cfg"
-	if [ ! -d "exported" ]; then
-		mkdir exported
-		echo "[$(date)] created exported directory"
+		echo "[$(date)] Executing users lftp commands"
+		lftp -c "$lftp_command_line" >> lftp.log
+		if [ $? == 0 ]
+		then
+			echo "[$(date)] lftp completed sucessfully"
+			echo "[$(date)] moving nwipe logs to ../exported"
+			mv $logfile exported/
+		else
+			echo "[$(date)] lftp command failed, See above and lftp.log for details"
+		fi
 	fi
-	echo "[$(date)] Executing users lftp commands"
-	lftp -c "$lftp_command_line" >> lftp.log
-	if [ $? == 0 ]
-	then
-		echo "[$(date)] lftp completed sucessfully"
-		echo "[$(date)] moving nwipe logs to ../exported"
-		mv $logfile exported/
-	else
-		echo "[$(date)] lftp command failed, See above and lftp.log for details"
-	fi
-fi
 
-http_post_url=$(kernel_cmdline_extractor http_post_url)
-if [ $? == 0 ]
-then
-	echo "[$(date)] Found http_post config on kernel command line in grub.cfg"
-	if [ ! -d "exported" ]; then
-		mkdir exported
-		echo "[$(date)] created exported directory"
-	fi
-	echo "[$(date)] Executing users http_post request"
-	wget --method PUT --body-file="$logfile" "$http_post_url" -O - -nv >> wget.log
+	http_post_url=$(kernel_cmdline_extractor http_post_url)
 	if [ $? == 0 ]
 	then
-		echo "[$(date)] wget completed sucessfully"
-		echo "[$(date)] moving nwipe logs to ../exported"
-		mv $logfile exported/
-	else
-		echo "[$(date)] wget command failed, See above and wget.log for details"
+		echo "[$(date)] Found http_post config on kernel command line in grub.cfg"
+		if [ ! -d "exported" ]; then
+			mkdir exported
+			echo "[$(date)] created exported directory"
+		fi
+		echo "[$(date)] Executing users http_post request"
+		wget --method PUT --body-file="$logfile" "$http_post_url" -O - -nv >> wget.log
+		if [ $? == 0 ]
+		then
+			echo "[$(date)] wget completed sucessfully"
+			echo "[$(date)] moving nwipe logs to ../exported"
+			mv $logfile exported/
+		else
+			echo "[$(date)] wget command failed, See above and wget.log for details"
+		fi
 	fi
-fi
 
 # Now nwipe has exited, archive dmesg.txt, nwipe logs and PDF certificates to USB
 # flash drive. This is done just in case there are any display issues and we want
