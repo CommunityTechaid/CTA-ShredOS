@@ -12,7 +12,7 @@ loop_count=0
 
 printf "\nWaiting for all USB devices to be initialised, timeout 30s ."
 
-while [ 1 ]; do
+while true; do
 	sha1=$(dmesg | grep -i USB | sha1sum)
 	if [[ "$previous_sha1" == "$sha1" ]]; then
 		break
@@ -98,7 +98,7 @@ if [ $? == 0 ]
 then
 	if [ "$country_code" != "" ]
 	then
-		loadkeys $country_code
+		loadkeys "$country_code"
 	fi
 fi
 
@@ -126,7 +126,7 @@ then
 
 	if [ $autopoweroff == 1 ]
 	then
-		echo $nwipe_options_string > nwipe_options.txt
+		echo "$nwipe_options_string" > nwipe_options.txt
 		sed -i 's/--autopoweroff/--nowait/g' nwipe_options.txt
 		nwipe_options_string=$(<nwipe_options.txt)
 	fi
@@ -162,58 +162,55 @@ fi
 
 # run nwipe with a time stamped log file
 #
-while true
-do
+if [ $nwipe_options_flag == 0 ]
+then
+	/usr/bin/nwipe --logfile="$logfile"
+else
+	/usr/bin/nwipe --logfile="$logfile" "$nwipe_options_string"
+fi
 
-
-	if [ $nwipe_options_flag == 0 ]
+# read the kernel command line for a lftp command
+# example lftp command "open 192.168.1.60; user joe joe's_password; cd data; mput nwipe_*.txt
+#
+lftp_command_line=$(kernel_cmdline_extractor lftp)
+if [ $? == 0 ]
+then
+	echo "[$(date)] Found lftp commands on kernel command line in grub.cfg"
+	if [ ! -d "exported" ]; then
+		mkdir exported
+		echo "[$(date)] created exported directory"
+	fi
+	echo "[$(date)] Executing users lftp commands"
+	lftp -c "$lftp_command_line" >> lftp.log
+	if [ $? == 0 ]
 	then
-		/usr/bin/nwipe --logfile=$logfile
+		echo "[$(date)] lftp completed sucessfully"
+		echo "[$(date)] moving nwipe logs to ../exported"
+		mv $logfile exported/
 	else
-		/usr/bin/nwipe --logfile=$logfile $nwipe_options_string
+		echo "[$(date)] lftp command failed, See above and lftp.log for details"
 	fi
-	# read the kernel command line for a lftp command
-	# example lftp command "open 192.168.1.60; user joe joe's_password; cd data; mput nwipe_*.txt
-	#
-	lftp_command_line=$(kernel_cmdline_extractor lftp)
-	if [ $? == 0 ]
-	then
-		echo "[$(date)] Found lftp commands on kernel command line in grub.cfg"
-		if [ ! -d "exported" ]; then
-			mkdir exported
-			echo "[$(date)] created exported directory"
-		fi
-		echo "[$(date)] Executing users lftp commands"
-		lftp -c "$lftp_command_line" >> lftp.log
-		if [ $? == 0 ]
-		then
-			echo "[$(date)] lftp completed sucessfully"
-			echo "[$(date)] moving nwipe logs to ../exported"
-			mv $logfile exported/
-		else
-			echo "[$(date)] lftp command failed, See above and lftp.log for details"
-		fi
-	fi
+fi
 
-	http_post_url=$(kernel_cmdline_extractor http_post_url)
+http_post_url=$(kernel_cmdline_extractor http_post_url)
+if [ $? == 0 ]
+then
+	echo "[$(date)] Found http_post config on kernel command line in grub.cfg"
+	if [ ! -d "exported" ]; then
+		mkdir exported
+		echo "[$(date)] created exported directory"
+	fi
+	echo "[$(date)] Executing users http_post request"
+	wget --method PUT --body-file="$logfile" "$http_post_url" -O - -nv >> wget.log
 	if [ $? == 0 ]
 	then
-		echo "[$(date)] Found http_post config on kernel command line in grub.cfg"
-		if [ ! -d "exported" ]; then
-			mkdir exported
-			echo "[$(date)] created exported directory"
-		fi
-		echo "[$(date)] Executing users http_post request"
-		wget --method PUT --body-file="$logfile" "$http_post_url" -O - -nv >> wget.log
-		if [ $? == 0 ]
-		then
-			echo "[$(date)] wget completed sucessfully"
-			echo "[$(date)] moving nwipe logs to ../exported"
-			mv $logfile exported/
-		else
-			echo "[$(date)] wget command failed, See above and wget.log for details"
-		fi
+		echo "[$(date)] wget completed sucessfully"
+		echo "[$(date)] moving nwipe logs to ../exported"
+		mv "$logfile" exported/
+	else
+		echo "[$(date)] wget command failed, See above and wget.log for details"
 	fi
+fi
 
 # Now nwipe has exited, archive dmesg.txt, nwipe logs and PDF certificates to USB
 # flash drive. This is done just in case there are any display issues and we want
@@ -234,23 +231,19 @@ fi
 #The post script should ideally not return as it will display whatever necessary instruction or output. In case it returns,
 #we indicate the end of the process and display a msgbox as below. 
 nag_poweroff () {
-    dlg --cr-wrap --no-collapse --title 'End of wipe process' \
-        --infobox "
+	dlg --cr-wrap --no-collapse --title 'End of wipe process' \
+		--infobox "
 \Zn  You can now safely switch off the machine.
   When it's turned off, put it on the correct shelf
 " 26 80
 }
 
+nag_poweroff
+
+# TC: Below should be superfluous (See lines 122 -> 132)
 # If the user specified --autopoweroff as a nwipe option then shutdown now 
 #
 if [ $autopoweroff == 1 ]
 then
 	init 0
 fi
-
-
-nag_poweroff
-
-#Random infinite loop
-while true; do sleep 600; done
-
