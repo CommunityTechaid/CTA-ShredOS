@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# start networking
+/etc/init.d/S40network start
+
 # trap the ctrl+c signal
 #
 trap "echo" INT
@@ -229,7 +232,13 @@ fi
 
 #Finishing up - This part is copied from the previous version of nwipe launcher
 #The post script should ideally not return as it will display whatever necessary instruction or output. In case it returns,
-#we indicate the end of the process and display a msgbox as below. 
+#we indicate the end of the process and display a msgbox as below.
+
+# Define dlg stolen from pre_001 script as nag_power referenced it without it being defined
+dlg () {
+    dialog --no-cancel --colors --backtitle "${dlg_backtitle}" "$@"  2>&1 1>&3
+}
+
 nag_poweroff () {
 	dlg --cr-wrap --no-collapse --title 'End of wipe process' \
 		--infobox "
