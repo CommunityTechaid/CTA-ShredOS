@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # start networking
 /etc/init.d/S40network start
@@ -10,33 +10,56 @@ trap "echo" INT
 # Check dmesg for USB activity, do not proceed until there has been no
 # activity for 5 seconds or automatically proceed after 30 seconds.
 #
-previous_sha1=""
-loop_count=0
+# previous_sha1=""
+# loop_count=0
 
-printf "\nWaiting for all USB devices to be initialised, timeout 30s ."
+# printf "\nWaiting for all USB devices to be initialised, timeout 30s ."
 
-while true; do
-	sha1=$(dmesg | grep -i USB | sha1sum)
-	if [[ "$previous_sha1" == "$sha1" ]]; then
-		break
-	fi
-	previous_sha1=$sha1
-	sleep 1
-	printf "."
-	sleep 1
-	printf "."
-	sleep 1
-	printf "."
-	sleep 1
-	printf "."
-	sleep 1
-	printf "."
-	((loop_count++))
-	if [ $loop_count == 6 ]; then
-		break
-	fi
-done
-printf "\n"
+# while true; do
+#     sha1=$(dmesg | grep -i USB | sha1sum)
+#     if [[ "$previous_sha1" == "$sha1" ]]; then
+#         break
+#     fi
+#     previous_sha1=$sha1
+#     sleep 1
+#     printf "."
+#     sleep 1
+#     printf "."
+#     sleep 1
+#     printf "."
+#     sleep 1
+#     printf "."
+#     sleep 1
+#     printf "."
+#     ((loop_count++))
+#     if [ $loop_count == 6 ]; then
+#         break
+#     fi
+# done
+# printf "\n"
+
+## initialise vars
+#
+country_code=""
+pinged=0
+server_ip="10.0.0.1"
+scripts_command_line=""
+nwipe_options_string=""
+lftp_command_line=""
+autopoweroff=0
+scripts_present_flag=0
+logfile="nwipe_log_$(date +%Y%m%d-%H%M%S).txt"
+
+echo "[$(date)] lftp log" > lftp.log
+echo "[$(date)] wget log" > wget.log
+echo "[$(date)] scripts log" > scripts.log
+
+# read the kernel command line for the loadkeys label for setting the correct keyboard layout
+#
+country_code=$(kernel_cmdline_extractor loadkeys)
+if [ -n "${country_code}" ]; then
+    loadkeys "$country_code"
+fi
 
 # archive dmesg.txt and nwipe logs prior to launching nwipe. This is done just
 # in case there are any display issues and we want to take a look at the dmesg data.
@@ -45,175 +68,141 @@ printf "\n"
 # files from the USB flash drive to ShredOS's ram disc
 /usr/bin/archive_log.sh -r
 
+## Prep for scripts
 #creating output directory in /usr
 echo "[$(date)] Creating output directory for device_logs"
 if [ -d "/usr/output" ]; then
-	echo "[$(date)] Found existing output directory. Deleting to rewrite"
-	rm -rf /usr/output
+    echo "[$(date)] Found existing output directory. Deleting to rewrite"
+    rm -rf /usr/output
 fi
 
 mkdir /usr/output
 echo "[$(date)] Created /usr/output directory"
 
+## wait for network
+echo "[$(date)] Waiting for network"
+while [ $pinged == "0" ]; do
+    ping -c 1 "$server_ip" > /dev/null
+    ping_exit_status=$?
+    if [ $ping_exit_status -eq 0 ]; then
+        pinged=1
+    fi
+done
+echo "[$(date)] Successfully ping $server_ip"
 
-
-# pre-launch hook
+## pre-launch hook
 # get files using lftp server and execute them prior to launching nwipe
-scripts_present_flag=0
 scripts_command_line="$(kernel_cmdline_extractor get_scripts)"
-if [ $? == 0 ]; then
-	scripts_present_flag=1
-	echo "[$(date)] Found script option specified in kernel command line in grub.cfg"
-	if [ -d "/usr/bin/scripts" ]; then
-		echo "[$(date)] Found existing script directory. Deleting to rewrite"
-		rm -rf /usr/bin/scripts
-	fi
+echo "[$(date)] $scripts_command_line"
+if [ -n "${scripts_command_line}" ]; then
+    scripts_present_flag=1
 
-	mkdir /usr/bin/scripts
-	echo "[$(date)] Created scripts directory"
+    echo "[$(date)] Found script option specified in kernel command line in grub.cfg"
+    if [ -d "/usr/bin/scripts" ]; then
+        echo "[$(date)] Found existing script directory. Deleting to rewrite"
+        rm -rf /usr/bin/scripts
+    fi
 
+    mkdir /usr/bin/scripts
 
-	echo "[$(date)] Executing command specfied to copy script directory"
-	lftp -c "$scripts_command_line" >> scripts.log
-	if [ $? == 0 ]; then
-		echo "[$(date)] Executed command successfully. Now executing pre-launch files in the directory"
-		chmod +x /usr/bin/scripts/*
-		/usr/bin/pre.sh | tee -a scripts.log 
-	fi
+    echo "[$(date)] Created scripts directory"
+    echo "[$(date)] Executing command specfied to copy script directory"
+
+    lftp -c "$scripts_command_line" >> scripts.log
+
+    if lftp -c "$scripts_command_line" >> scripts.log; then
+        echo "[$(date)] Executed command successfully. Now executing pre-launch files in the directory"
+        chmod +x /usr/bin/scripts/*
+        /usr/bin/pre.sh | tee -a scripts.log
+    fi
 fi
 
-# initialise
-#
-country_code=""
-nwipe_options_string=""
-lftp_command_line=""
-http_post_url=""
-autopoweroff=0
-logfile="nwipe_log_$(date +%Y%m%d-%H%M%S).txt"
 
-echo "[$(date)] lftp log" > lftp.log
-echo "[$(date)] wget log" > wget.log
-
-# read the kernel command line for the loadkeys label for setting the correct keyboard layout
-#
-country_code=$(kernel_cmdline_extractor loadkeys)
-if [ $? == 0 ]
-then
-	if [ "$country_code" != "" ]
-	then
-		loadkeys "$country_code"
-	fi
-fi
-
+## core nwipe launcher
 # read the kernel command line for nwipe options
 #
 nwipe_options_string=$(kernel_cmdline_extractor nwipe_options)
-if [ $? == 0 ]
-then
-	# set some flags
-	nwipe_options_flag=1
+echo "[$(date)] $nwipe_options_string"
+if [ -n "${nwipe_options_string}" ]; then
+    # set some flags
+    nwipe_options_flag=1
 
-	# Remove the --autopoweroff string if present from the nwipe options.
-	# We do this because we don't want nwipe itself to power down the system.
-	# ShredOS will handle the auto power down once the logs and dmesg output
-	# have been transferred to the USB flash drive after the wipe completes.
-	# One feature of nwipes autopoweroff is that it does not require the user
-	# to press a key to exit. So that nwipe doesn't pause waiting for the
-	# user to press a key which is nwipes default behaviour, we replace
-	# --autopoweroff with --nowait.
+    # Remove the --autopoweroff string if present from the nwipe options.
+    # We do this because we don't want nwipe itself to power down the system.
+    # ShredOS will handle the auto power down once the logs and dmesg output
+    # have been transferred to the USB flash drive after the wipe completes.
+    # One feature of nwipes autopoweroff is that it does not require the user
+    # to press a key to exit. So that nwipe doesn't pause waiting for the
+    # user to press a key which is nwipes default behaviour, we replace
+    # --autopoweroff with --nowait.
 
-	case "$nwipe_options_string" in
-		*--autopoweroff*) autopoweroff=1 ;;
-		*               ) autopoweroff=0 ;;
-	esac
+    case "$nwipe_options_string" in
+        *--autopoweroff*) autopoweroff=1 ;;
+        *               ) autopoweroff=0 ;;
+    esac
 
-	if [ $autopoweroff == 1 ]
-	then
-		echo "$nwipe_options_string" > nwipe_options.txt
-		sed -i 's/--autopoweroff/--nowait/g' nwipe_options.txt
-		nwipe_options_string=$(<nwipe_options.txt)
-	fi
+    if [ $autopoweroff == 1 ]; then
+        echo "$nwipe_options_string" > nwipe_options.txt
+        sed -i 's/--autopoweroff/--nowait/g' nwipe_options.txt
+        nwipe_options_string=$(<nwipe_options.txt)
+    fi
 
-	# In addition, check whether user has specified a /dev/loop0 or /dev/loop1
-	# device and if yes, create 1Mbyte loop devices. These are used for testing.
+    # In addition, check whether user has specified a /dev/loop0 or /dev/loop1
+    # device and if yes, create 1Mbyte loop devices. These are used for testing.
 
-	case "$nwipe_options_string" in
-		*/dev/loop0*) createloop0=1 ;;
-		*           ) createloop0=0 ;;
-	esac
+    case "$nwipe_options_string" in
+        */dev/loop0*) createloop0=1 ;;
+        *           ) createloop0=0 ;;
+    esac
 
-	if [ $createloop0 == 1 ]
-	then
-		truncate -s 1M loopback0.img
-		losetup -fP loopback0.img
-	fi
+    if [ $createloop0 == 1 ]; then
+        truncate -s 1M loopback0.img
+        losetup -fP loopback0.img
+    fi
 
-	case "$nwipe_options_string" in
-		*/dev/loop0*) createloop1=1 ;;
-		*           ) createloop1=0 ;;
-	esac
+    case "$nwipe_options_string" in
+        */dev/loop0*) createloop1=1 ;;
+        *           ) createloop1=0 ;;
+    esac
 
-	if [ $createloop1 == 1 ]
-	then
-		truncate -s 1M loopback1.img
-		losetup -fP loopback1.img
-	fi
+    if [ $createloop1 == 1 ]; then
+        truncate -s 1M loopback1.img
+        losetup -fP loopback1.img
+    fi
 
 else
-	nwipe_options_flag=0	
+    nwipe_options_flag=0
 fi
 
 # run nwipe with a time stamped log file
 #
-if [ $nwipe_options_flag == 0 ]
-then
-	/usr/bin/nwipe --logfile="$logfile"
+if [ $nwipe_options_flag == 0 ]; then
+    /usr/bin/nwipe --logfile="$logfile"
 else
-	/usr/bin/nwipe --logfile="$logfile" "$nwipe_options_string"
+    /usr/bin/nwipe --logfile="$logfile" "$nwipe_options_string"
 fi
 
 # read the kernel command line for a lftp command
 # example lftp command "open 192.168.1.60; user joe joe's_password; cd data; mput nwipe_*.txt
 #
 lftp_command_line=$(kernel_cmdline_extractor lftp)
-if [ $? == 0 ]
-then
-	echo "[$(date)] Found lftp commands on kernel command line in grub.cfg"
-	if [ ! -d "exported" ]; then
-		mkdir exported
-		echo "[$(date)] created exported directory"
-	fi
-	echo "[$(date)] Executing users lftp commands"
-	lftp -c "$lftp_command_line" >> lftp.log
-	if [ $? == 0 ]
-	then
-		echo "[$(date)] lftp completed sucessfully"
-		echo "[$(date)] moving nwipe logs to ../exported"
-		mv $logfile exported/
-	else
-		echo "[$(date)] lftp command failed, See above and lftp.log for details"
-	fi
+if [ -n "${lftp_command_line}" ]; then
+    echo "[$(date)] Found lftp commands on kernel command line in grub.cfg"
+    if [ ! -d "exported" ]; then
+        mkdir exported
+        echo "[$(date)] created exported directory"
+    fi
+    echo "[$(date)] Executing users lftp commands"
+    lftp -c "$lftp_command_line" >> lftp.log
+    if [ $? == 0 ]; then
+        echo "[$(date)] lftp completed sucessfully"
+        echo "[$(date)] moving nwipe logs to ../exported"
+        mv $logfile exported/
+    else
+        echo "[$(date)] lftp command failed, See above and lftp.log for details"
+    fi
 fi
 
-http_post_url=$(kernel_cmdline_extractor http_post_url)
-if [ $? == 0 ]
-then
-	echo "[$(date)] Found http_post config on kernel command line in grub.cfg"
-	if [ ! -d "exported" ]; then
-		mkdir exported
-		echo "[$(date)] created exported directory"
-	fi
-	echo "[$(date)] Executing users http_post request"
-	wget --method PUT --body-file="$logfile" "$http_post_url" -O - -nv >> wget.log
-	if [ $? == 0 ]
-	then
-		echo "[$(date)] wget completed sucessfully"
-		echo "[$(date)] moving nwipe logs to ../exported"
-		mv "$logfile" exported/
-	else
-		echo "[$(date)] wget command failed, See above and wget.log for details"
-	fi
-fi
 
 # Now nwipe has exited, archive dmesg.txt, nwipe logs and PDF certificates to USB
 # flash drive. This is done just in case there are any display issues and we want
@@ -226,8 +215,8 @@ fi
 # Post nwipe hook
 # Executing the commands in the script directory that are to run post nwipe execution
 if [ $scripts_present_flag == 1 ]; then
-	echo "[$(date)] Now executing post nwipe scripts in the directory scripts directory"
-	/usr/bin/post.sh | tee -a scripts.log
+    echo "[$(date)] Now executing post nwipe scripts in the directory scripts directory"
+    /usr/bin/post.sh | tee -a scripts.log
 fi
 
 #Finishing up - This part is copied from the previous version of nwipe launcher
@@ -235,13 +224,15 @@ fi
 #we indicate the end of the process and display a msgbox as below.
 
 # Define dlg stolen from pre_001 script as nag_power referenced it without it being defined
+
+dlg_backtitle="Community TechAid drive eraser (feat. ShredOS and nwipe)"
 dlg () {
-    dialog --no-cancel --colors --backtitle "${dlg_backtitle}" "$@"  2>&1 1>&3
+    dialog --no-cancel --colors --backtitle "${dlg_backtitle}" "$@"
 }
 
 nag_poweroff () {
-	dlg --cr-wrap --no-collapse --title 'End of wipe process' \
-		--infobox "
+    dlg --cr-wrap --no-collapse --title 'End of wipe process' \
+        --infobox "
 \Zn  You can now safely switch off the machine.
   When it's turned off, put it on the correct shelf
 " 26 80
@@ -252,7 +243,8 @@ nag_poweroff
 # TC: Below should be superfluous (See lines 122 -> 132)
 # If the user specified --autopoweroff as a nwipe option then shutdown now 
 #
-if [ $autopoweroff == 1 ]
-then
-	init 0
+if [ $autopoweroff == 1 ]; then
+    init 0
 fi
+
+exit
