@@ -48,7 +48,10 @@ nwipe_options_string=""
 lftp_command_line=""
 autopoweroff=0
 scripts_present_flag=0
-logfile="nwipe_log_$(date +%Y%m%d-%H%M%S).txt"
+date_string="$(date +%Y-%m-%d)"
+serial_number="$(lshw -class system -json | jq -r '.[0].serial')"
+time_string="$(date +%H%M%S)"
+logfile='nwipe_log_'"$date_string"'--'"$serial_number"'_'"$time_string"'.txt'
 
 # log () {
 #     message="$1"
