@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# start networking
-/etc/init.d/S40network start
 
 # trap the ctrl+c signal
 #
@@ -50,6 +48,9 @@ autopoweroff=0
 scripts_present_flag=0
 logfile="nwipe_log_$(date +%Y%m%d-%H%M%S).txt"
 
+# start networking
+# /etc/init.d/S40network start
+
 # log () {
 #     message="$1"
 #     time=$(date)
@@ -57,6 +58,10 @@ logfile="nwipe_log_$(date +%Y%m%d-%H%M%S).txt"
 #     echo "$log_string"
 # }
 # log "test log message"
+
+break_error () {
+    read -n 1 -p "Something has gone wrong. Show the above to TomC"
+}
 
 echo "[$(date)] lftp log" > lftp.log
 echo "[$(date)] wget log" > wget.log
@@ -89,8 +94,8 @@ echo "[$(date)] Created /usr/output directory"
 
 ## wait for network
 echo "[$(date)] Waiting for network"
-while [ $pinged == "0" ]; do
-    ping -c 1 "$server_ip" > /dev/null
+while [ $pinged -eq 0 ]; do
+    ping -c 1 "$server_ip" > /dev/null 2>&1
     ping_exit_status=$?
     if [ $ping_exit_status -eq 0 ]; then
         pinged=1
@@ -116,12 +121,16 @@ if [ -n "${scripts_command_line}" ]; then
     echo "[$(date)] Created scripts directory"
     echo "[$(date)] Executing command specfied to copy script directory"
 
-    lftp -c "$scripts_command_line" >> scripts.log
+    lftp -c "$scripts_command_line" >> lftp.log
 
-    if lftp -c "$scripts_command_line" >> scripts.log; then
+    script_get_exit_code="$?"
+    if [ $script_get_exit_code == 0 ]; then
         echo "[$(date)] Executed command successfully. Now executing pre-launch files in the directory"
         chmod +x /usr/bin/scripts/*
         /usr/bin/pre.sh | tee -a scripts.log
+    else
+        break_error
+
     fi
 fi
 
@@ -187,7 +196,7 @@ fi
 if [ $nwipe_options_flag -eq 0 ]; then
     /usr/bin/nwipe --logfile="$logfile"
 else
-    /usr/bin/nwipe --logfile="$logfile" "$nwipe_options_string"
+    /usr/bin/nwipe --logfile="$logfile" $nwipe_options_string
 fi
 
 nwipe_exit_status=$?
