@@ -49,7 +49,6 @@ scripts_present_flag=0
 date_string="$(date +%Y-%m-%d)"
 serial_number="$(lshw -class system -json | jq -r '.[0].serial')"
 time_string="$(date +%H%M%S)"
-logfile='nwipe_log_'"$date_string"'--'"$serial_number"'_'"$time_string"'.txt'
 
 # start networking
 # /etc/init.d/S40network start
@@ -137,6 +136,9 @@ if [ -n "${scripts_command_line}" ]; then
     fi
 fi
 
+# define logfile format after CTA ID is inputted by user in pre_ script
+cta_device_id=$(<CTA_ID)
+logfile='nwipe_log_'"$date_string"'--'"$cta_device_id"'--'"$serial_number"'_'"$time_string"'.txt'
 
 ## core nwipe launcher
 # read the kernel command line for nwipe options
