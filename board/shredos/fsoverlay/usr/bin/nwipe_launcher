@@ -204,16 +204,16 @@ else
     /usr/bin/nwipe --logfile="$logfile" $nwipe_options_string
 fi
 
-nwipe_exit_status=$?
-if [ ! $nwipe_exit_status -eq 0 ]; then
-    echo "!!!!!!!!!!!!!!!!!!!!!!!"
-    echo "Logfile: $logfile"
-    echo "$(<"$logfile")"
-    echo "!!!!!!!!!!!!!!!!!!!!!!!"
-    echo "nwipe_options_string: $nwipe_options_string"
-    echo "!!!!!!!!!!!!!!!!!!!!!!!"
-    read -n 1 -p "Something has gone wrong. Show the above to TomC"
-fi
+# nwipe_exit_status=$?
+# if [ ! $nwipe_exit_status -eq 0 ]; then
+#     echo "!!!!!!!!!!!!!!!!!!!!!!!"
+#     echo "Logfile: $logfile"
+#     echo "$(<"$logfile")"
+#     echo "!!!!!!!!!!!!!!!!!!!!!!!"
+#     echo "nwipe_options_string: $nwipe_options_string"
+#     echo "!!!!!!!!!!!!!!!!!!!!!!!"
+#     read -n 1 -p "Something has gone wrong. Show the above to TomC"
+# fi
 
 # read the kernel command line for a lftp command
 # example lftp command "open 192.168.1.60; user joe joe's_password; cd data; mput nwipe_*.txt
