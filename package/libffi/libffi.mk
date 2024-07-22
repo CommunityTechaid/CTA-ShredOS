@@ -4,12 +4,13 @@
 #
 ################################################################################
 
-LIBFFI_VERSION = 3.4.4
+LIBFFI_VERSION = 3.4.6
 LIBFFI_SITE = \
 	https://github.com/libffi/libffi/releases/download/v$(LIBFFI_VERSION)
 LIBFFI_LICENSE = MIT
 LIBFFI_LICENSE_FILES = LICENSE
-LIBFFI_CPE_ID_VENDOR = libffi_project
+# LIBFFI_CPE_ID_VENDOR = libffi_project
+LIBFFI_CPE_ID_VALID = YES
 LIBFFI_INSTALL_STAGING = YES
 # We're patching Makefile.am
 LIBFFI_AUTORECONF = YES
