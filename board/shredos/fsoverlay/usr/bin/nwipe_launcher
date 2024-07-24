@@ -46,9 +46,7 @@ nwipe_options_string=""
 lftp_command_line=""
 autopoweroff=0
 scripts_present_flag=0
-date_string="$(date +%Y-%m-%d)"
 serial_number="$(lshw -class system -json | jq -r '.[0].serial')"
-time_string="$(date +%H%M%S)"
 
 # start networking
 # /etc/init.d/S40network start
@@ -135,6 +133,11 @@ if [ -n "${scripts_command_line}" ]; then
 
     fi
 fi
+
+# Setting date / time strings here, so pre_003 has a chance to reach NTP server and correct the date.
+date_string="$(date +%Y-%m-%d)"
+time_string="$(date +%H%M%S)"
+
 
 # define logfile format after CTA ID is inputted by user in pre_ script
 cta_device_id=$(<CTA_ID)
