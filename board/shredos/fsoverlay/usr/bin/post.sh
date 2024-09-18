@@ -1,14 +1,14 @@
-#!/bin/sh
+#!/bin/bash
 
-if [ "$(ls -A /usr/bin/scripts/post_*.sh 2>/dev/null)" ]; then
-	for f in /usr/bin/scripts/post_*.sh; do
-		# if this execution fails, then stop the `for`:
-		echo "Executing $f"
-		if ! bash "$f"; then
-			break;
-			echo "There was an error when executing script $f. Ignoring rest of the scripts"
-		fi
-	done
-else:
-	echo "No post hook scripts to run"
+if compgen -G "/usr/bin/scripts/post_*.sh" > /dev/null; then
+    for f in /usr/bin/scripts/post_*.sh; do
+        # if this execution fails, then stop the `for`:
+        echo "Executing $f"
+        if ! bash "$f"; then
+            echo "There was an error when executing script $f. Ignoring rest of the scripts"
+            break;
+        fi
+    done
+else :
+    echo "No post hook scripts to run"
 fi

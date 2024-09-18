@@ -46,7 +46,18 @@ These will be executed only if the `get_scripts` argument is found.
 ### New packages
 
 The following packages are part of this build (configured using buildroot):
+- `dialog`
 - `jq`
 - `lshw`
 - `lsblk`
 
+If starting from scratch, after running `make shredos_defconfig`, run `make menuconfig` to ensure that they are added.
+
+Add them via the Target packages menu:
+	> Shell and utilities > dialog
+	> Development tools > jq
+	> Hardware handling > lshw
+
+(Optional: Build Options > Enable compiler cache - This option will enable the use of ccache, a compiler cache. It will cache the result of previous builds to speed up builds.)
+
+Save the config, exit and run `make` to build the image.
