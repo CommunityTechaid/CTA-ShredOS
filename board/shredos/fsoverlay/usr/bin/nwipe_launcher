@@ -98,8 +98,8 @@ has_ip=1
 while [ $has_ip -eq 1 ]; do
     # pause to give services a chance to catch up
     sleep 15
-    # ask ip for all IPv4 address and see if eth0 is present
-    ip -4 addr | grep eth0 > /dev/null
+    # ask ip for all IPv4 address and see if an eth dev is present
+    ip -4 addr | grep eth > /dev/null
     # grep exit status is 1 when string isn't found
     has_ip=$?
     if [ $has_ip -eq 1 ]; then
