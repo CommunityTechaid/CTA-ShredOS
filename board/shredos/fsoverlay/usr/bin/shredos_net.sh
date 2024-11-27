@@ -95,8 +95,8 @@ do
 	do
 
 		# We're only interested in ethernet enxxxx or ethxx devices
-        	if [[ "$device" == en* ]] || [[ "$device" == eth* ]]
-        	then
+        if [[ "$device" == en* ]] || [[ "$device" == eth* ]]
+        then
 
 			# and we are only interested in one device being active at any one time
         	if [ "$active_device" == "$device" ] || [ "$active_device" == "none" ];
