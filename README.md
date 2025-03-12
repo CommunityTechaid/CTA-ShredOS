@@ -1,16 +1,31 @@
 # Documentation
 
 ## Quick Links
-[How to use](#how-to-use)
-[Build Instructions](https://github.com/PartialVolume/shredos.x86_64?tab=readme-ov-file#compiling-shredos-and-burning-to-usb-stick-the-harder-way-)  
-[Changes in the custom build](#changes-in-the-custom-build)  
-[Official Documentation](https://github.com/PartialVolume/shredos.x86_64)  
 
+[How to build](#how-to-use)
+[Changes in the custom build](#changes-in-the-custom-build)  
+
+### External
+[ShredOS Build Instructions](https://github.com/PartialVolume/shredos.x86_64?tab=readme-ov-file#compiling-shredos-and-burning-to-usb-stick-the-harder-way-)  
+[ShredOS Documentation](https://github.com/PartialVolume/shredos.x86_64)  
+
+## Prerequisite
+
+TBD (base-devel, git, make?)
 
 ## How to use
 These instructions are in addition to the official [ShredOS repo](https://github.com/PartialVolume/shredos.x86_64)
 - Build the image as per the upstream documentation.
+	1 - `make clean` (to make sure you're definitely building from scratch)
+	2 - `make shredos_defconfig` (to load the build settings)
+	3 - `make` (to actually build)
+
+- Test using libvirt
+	`qemu-system-x86_64 -M pc -m 2048 -kernel ./output/images/bzImage`	
+
 - Mount image so it's available for the PXE boot setup.
+	- TBD
+	
 - Create a directory to store the [CTA Hardward Info](https://github.com/CommunityTechaid/HardwardInfo) scripts on the server.
 	(eg `mkdir /srv/netboot/shredos/HardwardInfoScripts`)
 - Copy / clone scripts into the folder
