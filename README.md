@@ -3,7 +3,7 @@
 ## Quick Links
 
 [How to build](#how-to-use)
-[Changes in the custom build](#changes-in-the-custom-build)  
+[Changes in the custom build](#changes-in-the-custom-build)
 
 ### External
 [ShredOS Build Instructions](https://github.com/PartialVolume/shredos.x86_64?tab=readme-ov-file#compiling-shredos-and-burning-to-usb-stick-the-harder-way-)  
@@ -11,35 +11,53 @@
 
 ## Prerequisite
 
-TBD (base-devel, git, make?)
+TBD 
+- git
+- build-essential
+- automake
+- pkg-config
+- libncurses5-dev
+- autotools-dev
+- libparted-dev
+- dmidecode
+- coreutils
+- smartmontools
+- unzip
+- bc
+- rsync
 
 ## How to use
 These instructions are in addition to the official [ShredOS repo](https://github.com/PartialVolume/shredos.x86_64)
 - Build the image as per the upstream documentation.
-	1 - `make clean` (to make sure you're definitely building from scratch)
-	2 - `make shredos_defconfig` (to load the build settings)
-	3 - `make` (to actually build)
+        1. `make clean` to make sure you're definitely building from scratch.
+        2. `make shredos_defconfig` to load the build settings.
+        3. `make` to actually build.
 
-- Test using libvirt
-	`qemu-system-x86_64 -M pc -m 2048 -kernel ./output/images/bzImage`	
+- (Optionally test the build locally using libvirt)
+        - `qemu-system-x86_64 -M pc -m 2048 -kernel ./output/images/bzImage`	
 
-- Mount image so it's available for the PXE boot setup.
-	- TBD
+- Mount the built image so it's available for the PXE boot setup.
+        - (Umount old image. Remount as backup)
+       	- `sudo cp ./output/images/CTAShredOS?Name?.img /srv/netboot/CTAShredOS.img`
+	- (Mount new image)
 	
 - Create a directory to store the [CTA Hardward Info](https://github.com/CommunityTechaid/HardwardInfo) scripts on the server.
-	(eg `mkdir /srv/netboot/shredos/HardwardInfoScripts`)
+	- (eg `mkdir /srv/netboot/shredos/HardwardInfoScripts`)
+
 - Copy / clone scripts into the folder
-	(`git clone https://github.com/CommunityTechaid/HardwardInfo /srv/netboot/shredos/HardwardInfoScripts`)
-- Add kernal parameters to the `menu.ipxe` file (Or `/boot/grub/grub.cfg` and `/EFI/grub/grub.cfg` if not using the PXE setup)
+	- `git clone https://github.com/CommunityTechaid/HardwardInfo /srv/netboot/shredos/HardwardInfoScripts`)
+
+- Add kernel parameters to the `menu.ipxe` file (Or `/boot/grub/grub.cfg` and `/EFI/grub/grub.cfg` if not using the PXE setup)
 	- Get the scripts
-		- `get_scripts="open 10.0.0.1; user ServerUser Password; cd path/To/HardwardInfo/Scripts; mget -O /usr/bin/scripts ./*sh; exit`
-  		- The custom scripts directory on the server should hold all the scripts that need to be executed before or after nwipe. The scripts should be named as follows. 
-			- `pre_00X[scriptname].sh` for all scripts that need to be run *before* nwipe is launched. `00X` is a number used to denote precedence.  Lower numbered scripts are executed first. 
-			- `post_00X[scriptname].sh` for all scripts that need to be run *after* nwipe is launched.- 
-	- Nwipe_logs param (old setup using the .txt logs)
-   		- `lftp="open 10.0.0.1; user ServerUser Password; cd shredos; mput nwipe_*.txt; exit`
-     	- JSON device logs
-      		- `lftp="open 10.0.0.1; user ServerUser Password; cd shredos; mput device*.json; exit`
+		- `get_scripts="open 10.0.0.1; user ServerUser Password; cd path/To/HardwardInfo/Scripts; mget -O /usr/bin/scripts ./*sh; exit"`
+		- The custom scripts directory on the server should hold all the scripts that need to be executed before or after nwipe. The scripts should be named as follows. 
+			- `pre_00X[scriptname].sh` for all scripts that need to be run *before* nwipe is launched.		
+			- `post_00X[scriptname].sh` for all scripts that need to be run *after* nwipe is launched.
+                        - (`00X` is a number used to denote precedence.  Lower numbered scripts are executed first.)
+ 	- Nwipe_logs param (old setup using the .txt logs)
+	        - `lftp="open 10.0.0.1; user ServerUser Password; cd shredos; mput nwipe_*.txt; exit"`
+	- JSON device logs
+      		- `lftp="open 10.0.0.1; user ServerUser Password; cd shredos; mput device*.json; exit"`
 
 - Note: Make sure the custom scripts are tested. If one script fails. the execution of the remaining scripts are abandoned. Some logs will be available in scripts.log but on the filesystem. 
 
