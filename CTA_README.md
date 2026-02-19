@@ -9,7 +9,7 @@
 
 ## How to use
 These instructions are in addition to the official [ShredOS repo](https://github.com/PartialVolume/shredos.x86_64)
-- Build the image as per the upstream documentation.
+- Build the image as per the upstream documentation. (TL;DR: -`make distclean; make shredos_defconfig; make`)
 - Mount image so it's available for the PXE boot setup.
 - Create a directory to store the [CTA Hardward Info](https://github.com/CommunityTechaid/HardwardInfo) scripts on the server.
 	(eg `mkdir /srv/netboot/shredos/HardwardInfoScripts`)
