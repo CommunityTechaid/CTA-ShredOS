@@ -61,3 +61,20 @@ Add them via the Target packages menu:
 (Optional: Build Options > Enable compiler cache - This option will enable the use of ccache, a compiler cache. It will cache the result of previous builds to speed up builds.)
 
 Save the config, exit and run `make` to build the image.
+
+## Testing
+
+If built on Theta (or any system with `qemu` set up), run the following to launch a test machine:
+```bash
+sudo qemu-system-x86_64 \
+    -m 4096 \
+    -kernel ./output/images/bzImage \
+    -append 'console=tty3 \
+    		 loglevel=3 \
+    		 loadkeys=uk \
+    		 nwipe_options="--method=zero --verify=last --noblank --nousb --nowait --autonuke" \
+    		 get_scripts="open 10.0.0.1; user netboot-log ThreeInOne!; cd scripts; mget -O /usr/bin/scripts ./*sh; exit" \
+    		 lftp_user="$UserName" \
+    		 lftp_pass="$Password" \
+    		 lftp="open 10.0.0.1; user $UserName $Password; cd shredos; mput nwipe_*.txt; mput /usr/output/*.json; exit"'
+```
